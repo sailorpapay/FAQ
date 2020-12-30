@@ -5,5 +5,5 @@ kubectl get namespace "kubernetes-dashboard" -o json \
   | kubectl replace --raw /api/v1/namespaces/kubernetes-dashboard/finalize -f -
   
   
-  
-  
+#### get token read only  user, default namespace #####
+kubectl get secret  $(kubectl get serviceaccount read-only-user  -o jsonpath="{.secrets[0].name}") -o jsonpath="{.data.token}" | base64 --decode
