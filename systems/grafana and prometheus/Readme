@@ -1,0 +1,55 @@
+kubectl create namespace prometheus
+helm install prometheus stable/prometheus \
+    --namespace prometheus \
+    --set alertmanager.persistentVolume.storageClass="gp2" \
+    --set server.persistentVolume.storageClass="gp2" \
+    --set server.nodeSelector.system=prometheus \
+    --set alertmanager.nodeSelector.system=prometheus
+
+kubectl get all -n prometheus
+
+
+
+
+
+#####Grafana for INGRESS ALB AWS
+
+kubectl create namespace grafana
+helm install grafana grafana/grafana \
+    --set persistence.storageClassName="gp2" \
+    --set persistence.enabled=true \
+    --set nodeSelector.system=prometheus \
+    --set adminPassword='J213k4kl!1hhaB' \
+    --values grafana.yaml \
+    --set service.type=NodePort
+
+
+
+
+==================
+Install the metrics server
+kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/download/v0.3.6/components.yaml
+
+
+
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/autoscaler/master/cluster-autoscaler/cloudprovider/aws/examples/cluster-autoscaler-autodiscover.yaml
+
+kubectl -n kube-system annotate deployment.apps/cluster-autoscaler cluster-autoscaler.kubernetes.io/safe-to-evict="false"
+kubectl -n kube-system edit deployment.apps/cluster-autoscaler
+
+
+- ./cluster-autoscaler
+- --v=4
+- --stderrthreshold=info
+- --cloud-provider=aws
+- --skip-nodes-with-local-storage=false
+- --expander=least-waste
+- --node-group-auto-discovery=asg:tag=k8s.io/cluster-autoscaler/enabled,k8s.io/cluster-autoscaler/tagnameDOMAIN
+- --balance-similar-node-groups
+- --skip-nodes-with-system-pods=false
+- --scale-down-delay-after-add=3m30s
+- --node-deletion-delay-timeout=1m0s
+- --scale-down-delay-after-failure=1m0s
+
+ATACH policy eks-auto-scale
+kubectl -n default describe secret $(kubectl -n default get secret | grep admin-user | awk '{print $1}')
